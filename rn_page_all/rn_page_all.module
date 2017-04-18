@@ -1,0 +1,107 @@
+<?php
+/**
+ * @file
+ * Code for the rn_page feature.
+ */
+
+include_once 'rn_page_all.features.inc';
+
+function rn_page_all_permission(){     
+           return array('view rn page'
+            => array(
+              'title' => t('View rn page'),
+              'description' => t('View rn page'),
+            ),
+           ); 
+         }
+        function rn_page_all_menu() {
+           $items = array();
+           $items['drupal-test-task'] = array(
+             'title' => 'RN page Drupal API',
+             'page callback' => 'rn_page_all_list',
+             'access arguments' => array('view rn page'),
+          );
+          $items['drupal-test-task/%rn/edit'] = array(
+    		'title'            => 'Edit User',
+    		'page callback'    => 'drupal_get_form',
+    		'page arguments'   => array('rn_page_all_form', 1),
+    		'access arguments' => array('administer site configuration'),
+    		'type'             => MENU_CALLBACK,
+  	      );
+        return $items;
+        }
+        function rn_load($uid)
+        {
+        	$rn = db_select('users', 'u')
+        		->fields('u', array('uid', 'name'))
+        		->condition('u.uid', $uid)
+        		->execute()->fetchAssoc();
+        
+        	return $rn;
+        }
+        //форма редактирования
+        function rn_page_all_form($form, &$form_state, $rn = null)
+        {
+            $form['uid'] = array(
+        		'#title'         => t('User UID.'),
+        		'#type'          => 'hidden',
+        		'#default_value' => $rn ? $rn['uid'] : '',
+        		'#required'      => true,
+        	);
+        	$form['name'] = array(
+        		'#title'         => t('User name.'),
+        		'#type'          => 'textfield',
+        		'#default_value' => $rn ? $rn['name'] : '',
+        		'#required'      => true,
+        	);
+        
+        	$form['submit'] = array(
+        		'#type'  => 'submit',
+        		'#value' => t('Submit'),
+        	);
+
+        
+        	return $form;
+        }
+        //сохраниение
+        function rn_page_all_form_submit($form, &$form_state)
+        {
+        	$rn = array(
+        		'uid'       => $form_state['values']['uid'],
+        		'name'        => $form_state['values']['name'],
+        	);
+        	// save edit data
+        		$rn['uid'] = $form_state['values']['uid'];
+        		drupal_write_record('users', $rn, 'uid');
+        		drupal_set_message(t('User saved!'));
+        	
+        }
+        //вывод списка пльзователей
+        function rn_page_all_list(){
+                $header = array(
+        		array('data' => t('UID')),
+        		array('data' => t('Name')),
+        		array('data' => t('Actions'))
+        	);
+        	$rn = db_select('users', 'u')
+        		->fields('u', array('uid', 'name'))
+                ->range(0, 50)
+        		->execute()->fetchAll();
+            $row = array();
+        	if ($rn) {
+        		foreach ($rn as $rn_user_feed) {
+        			$actions = l(t('edit'), 'drupal-test-task/' . $rn_user_feed->uid . '/edit');
+        
+        			$row [] = array(
+                        array('data' => $rn_user_feed->uid),
+        				array('data' => $rn_user_feed->name),
+        				array('data' => $actions),
+        			);
+        		}
+        	}
+        
+        	return theme('table', array(
+        		'header' => $header,
+        		'rows'   => $row,
+        	));
+        }
